@@ -513,3 +513,57 @@ def get_user_reading_list(user_id: int, status: Optional[str] = None) -> List[Di
     finally:
         conn.close()
 
+
+# ============================================================================
+# DASHBOARD STATISTICS (Calls PostgreSQL Views & Stored Functions)
+# ============================================================================
+
+def get_dashboard_stats() -> Dict[str, Any]:
+    """Fetch summary statistics from the dashboard_stats view and stored function."""
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM dashboard_stats;")
+            summary = dict(cur.fetchone() or {})
+            cur.execute("SELECT * FROM get_paper_statistics();")
+            extra = dict(cur.fetchone() or {})
+            if extra.get("avg_citations_per_paper") is not None:
+                extra["avg_citations_per_paper"] = float(extra["avg_citations_per_paper"])
+            summary.update(extra)
+            return summary
+    finally:
+        conn.close()
+
+
+def get_domain_stats() -> List[Dict[str, Any]]:
+    """Fetch paper and citation counts per domain from the domain_stats view."""
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM domain_stats;")
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_top_cited_papers(limit: int = 5) -> List[Dict[str, Any]]:
+    """Fetch top cited papers using the get_top_cited_papers() stored function."""
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM get_top_cited_papers(%s);", (limit,))
+            return [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_user_activity_summary(user_id: int) -> Dict[str, Any]:
+    """Fetch bookmark and reading status counts using stored function."""
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT * FROM get_user_activity_summary(%s);", (user_id,))
+            return dict(cur.fetchone() or {})
+    finally:
+        conn.close()
+
