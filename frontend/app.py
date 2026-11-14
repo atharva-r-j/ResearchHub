@@ -80,52 +80,183 @@ html, body, [class*="css"] {
     max-width: 1280px;
 }
 
+/* ============================================================================
+   SIDEBAR POLISHED DESIGN SYSTEM
+============================================================================ */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #090D16 0%, #0D1424 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 1.5rem !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
+}
+
 /* Brand Card in Sidebar */
 .brand-container {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.15) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%);
+    border: 1px solid rgba(99, 102, 241, 0.35);
     border-radius: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 22px;
+    box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.2);
 }
-.brand-icon {
-    font-size: 28px;
-    line-height: 1;
+.brand-icon-wrapper {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
 }
 .brand-title {
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #818CF8 0%, #C084FC 100%);
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, #FFFFFF 0%, #C7D2FE 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     margin: 0;
+    line-height: 1.2;
 }
 .brand-subtitle {
-    font-size: 0.75rem;
+    font-size: 0.74rem;
     color: #94A3B8;
-    margin: 0;
-    font-weight: 500;
+    margin: 2px 0 0 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.brand-badge {
+    background: rgba(99, 102, 241, 0.3);
+    color: #A5B4FC;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+}
+
+/* Sidebar Section Headers */
+.sidebar-section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #64748B;
+    margin: 16px 0 8px 4px;
+}
+
+/* Modern Tab Navigation (Transforming Radio Buttons) */
+div[data-testid="stSidebar"] div[role="radiogroup"] {
+    gap: 0 !important;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
+    display: none !important;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label {
+    display: flex !important;
+    align-items: center !important;
+    width: 100% !important;
+    padding: 10px 14px !important;
+    margin-bottom: 4px !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.07) !important;
+    transform: translateX(4px) !important;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"],
+div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+    background: linear-gradient(90deg, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0.05) 100%) !important;
+    border: 1px solid rgba(99, 102, 241, 0.4) !important;
+    border-left: 3.5px solid #6366F1 !important;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label p {
+    font-size: 0.9rem !important;
+    font-weight: 500 !important;
+    color: #94A3B8 !important;
+    margin: 0 !important;
+    letter-spacing: -0.01em;
+}
+div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
+div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
+    color: #F8FAFC !important;
+    font-weight: 700 !important;
+}
+
+/* AI Engine Sidebar Card */
+.ai-engine-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 12px;
+}
+.ai-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+.ai-card-title {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #F1F5F9;
+}
+.ai-status-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #34D399;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 7px;
+    border-radius: 12px;
+}
+.ai-card-meta {
+    font-size: 0.73rem;
+    color: #94A3B8;
+    line-height: 1.5;
+}
+.pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 6px #10B981;
 }
 
 /* User Profile Badge */
 .user-card {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     padding: 10px 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(15, 23, 42, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    margin-top: 10px;
+    margin-top: 8px;
 }
 .user-avatar {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
     background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%);
     display: flex;
     align-items: center;
@@ -133,28 +264,18 @@ html, body, [class*="css"] {
     font-weight: 700;
     font-size: 0.85rem;
     color: white;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
 }
 
-/* AI Engine Pulse Badge */
-.ai-status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 20px;
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    color: #34D399;
-    margin: 8px 0 16px 0;
-}
-.pulse-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #10B981;
-    box-shadow: 0 0 8px #10B981;
+/* Sidebar Footer */
+.sidebar-footer {
+    text-align: center;
+    margin-top: 24px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.72rem;
+    color: #64748B;
+    line-height: 1.6;
 }
 
 /* Metric / KPI Cards */
@@ -282,12 +403,13 @@ div[data-testid="stExpander"] {
 with st.sidebar:
     st.markdown("""
     <div class="brand-container">
-        <div class="brand-icon">📚</div>
+        <div class="brand-icon-wrapper">📚</div>
         <div>
             <div class="brand-title">ResearchHub</div>
-            <div class="brand-subtitle">AI-Powered Research Suite</div>
+            <div class="brand-subtitle"><span class="brand-badge">PRO</span> AI Discovery Suite</div>
         </div>
     </div>
+    <div class="sidebar-section-label">MAIN NAVIGATION</div>
     """, unsafe_allow_html=True)
 
     page = st.radio(
@@ -304,13 +426,20 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown("---")
+    st.markdown("<div class='sidebar-section-label'>AI & VECTOR ENGINE</div>", unsafe_allow_html=True)
 
     # AI Status & Sync
     if AI_AVAILABLE:
         st.markdown("""
-        <div class="ai-status-pill">
-            <span class="pulse-dot"></span> Vector Engine Active (ChromaDB)
+        <div class="ai-engine-card">
+            <div class="ai-card-header">
+                <div class="ai-card-title">ChromaDB Store</div>
+                <span class="ai-status-tag"><span class="pulse-dot"></span> CONNECTED</span>
+            </div>
+            <div class="ai-card-meta">
+                <div>• Embedding: <b>all-MiniLM-L6</b> (384-d)</div>
+                <div>• Distance: <b>Cosine Metric</b></div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -323,8 +452,7 @@ with st.sidebar:
     else:
         st.warning("⚠️ AI module inactive. Install `sentence-transformers` and `chromadb` for semantic search.")
 
-    st.markdown("---")
-    st.caption("Active User Profile")
+    st.markdown("<div class='sidebar-section-label'>ACTIVE RESEARCHER</div>", unsafe_allow_html=True)
 
     users_map = {
         1: ("Atharva Jadhav", "Lead Researcher", "AJ"),
@@ -347,6 +475,11 @@ with st.sidebar:
             <div style="font-weight: 700; font-size: 0.88rem; color: #F1F5F9;">{uname}</div>
             <div style="font-size: 0.74rem; color: #94A3B8;">{urole}</div>
         </div>
+    </div>
+
+    <div class="sidebar-footer">
+        <div>ResearchHub v1.0 · DBMS Lab</div>
+        <div style="font-size: 0.68rem; color: #475569;">PostgreSQL · ChromaDB · Streamlit</div>
     </div>
     """, unsafe_allow_html=True)
 
