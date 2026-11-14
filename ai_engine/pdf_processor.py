@@ -9,8 +9,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Union
+import io
 
-import fitz  # PyMuPDF
+try:
+    import pymupdf as fitz
+except ImportError:
+    import fitz  # PyMuPDF fallback
 
 _logger = logging.getLogger(__name__)
 if not _logger.handlers:
@@ -20,13 +24,13 @@ if not _logger.handlers:
     _logger.setLevel(logging.INFO)
 
 
-def extract_text_from_pdf(file_path: Union[str, Path]) -> str:
+def extract_text_from_pdf(source: Union[str, Path, bytes, io.BytesIO]) -> str:
     """Extract plain text from a PDF.
 
     Parameters
     ----------
-    file_path : str or pathlib.Path
-        Path to the uploaded PDF document.
+    source : str, pathlib.Path, bytes, or file-like object
+        File path to the PDF document, or raw bytes / stream (e.g. from Streamlit).
 
     Returns
     -------
@@ -34,14 +38,25 @@ def extract_text_from_pdf(file_path: Union[str, Path]) -> str:
         Concatenated textual content of all readable pages.  Returns an empty
         string if the file cannot be opened or contains no extractable text.
     """
-    path = Path(file_path)
-    if not path.is_file():
-        _logger.error("File not found: %s", path)
-        return ""
     try:
-        doc = fitz.open(str(path))
-    except Exception as exc:  # pragma: no cover – very rare, but guard anyway
-        _logger.error("Failed to open PDF %s: %s", path, exc)
+        if isinstance(source, (str, Path)):
+            path = Path(source)
+            if not path.is_file():
+                _logger.error("File not found: %s", path)
+                return ""
+            doc = fitz.open(str(path))
+        elif isinstance(source, bytes):
+            doc = fitz.open(stream=source, filetype="pdf")
+        elif hasattr(source, "read"):
+            data = source.read()
+            if hasattr(source, "seek"):
+                source.seek(0)
+            doc = fitz.open(stream=data, filetype="pdf")
+        else:
+            _logger.error("Unsupported PDF source type: %s", type(source))
+            return ""
+    except Exception as exc:
+        _logger.error("Failed to open PDF source: %s", exc)
         return ""
 
     texts = []

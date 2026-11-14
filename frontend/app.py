@@ -37,13 +37,16 @@ from database.db import (
     get_user_activity_summary,
 )
 
-# --- AI imports (teammate's module) ---
+# --- AI imports (AI Engine module) ---
 try:
     from ai_engine.semantic_search import (
         index_paper as ai_index_paper,
+        index_papers_batch as ai_index_papers_batch,
         semantic_search as ai_semantic_search,
         get_similar_papers as ai_get_similar_papers,
+        delete_paper_embedding as ai_delete_paper_embedding,
     )
+    from ai_engine.pdf_processor import extract_text_from_pdf
     AI_AVAILABLE = True
 except ImportError:
     AI_AVAILABLE = False
@@ -70,7 +73,15 @@ page = st.sidebar.radio(
 )
 
 if not AI_AVAILABLE:
-    st.sidebar.warning("⚠️ AI module not loaded. Semantic search disabled. Install: `pip install sentence-transformers chromadb`")
+    st.sidebar.warning("⚠️ AI module not loaded. Semantic search disabled. Install: `pip install sentence-transformers chromadb pymupdf`")
+else:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🤖 AI Vector Engine")
+    if st.sidebar.button("🔄 Sync All to ChromaDB", use_container_width=True):
+        with st.sidebar.status("Indexing all papers into vector DB..."):
+            all_papers = get_all_papers()
+            count = ai_index_papers_batch(all_papers)
+            st.sidebar.success(f"Indexed {count} papers!")
 
 # Simple user selector (no auth – this is a demo project)
 st.sidebar.markdown("---")
@@ -242,16 +253,40 @@ elif page == "🔍 Search Papers":
 elif page == "➕ Add Paper":
     st.title("➕ Add New Paper")
 
+    # Optional PDF Uploader
+    uploaded_pdf = st.file_uploader("📄 Upload Research Paper PDF (optional)", type=["pdf"])
+    extracted_text = ""
+    saved_pdf_rel_path = None
+
+    if uploaded_pdf is not None:
+        st.info(f"Uploaded: **{uploaded_pdf.name}** ({uploaded_pdf.size / 1024:.1f} KB)")
+        try:
+            # Save uploaded PDF to data/papers/
+            papers_dir = PROJECT_ROOT / "data" / "papers"
+            papers_dir.mkdir(parents=True, exist_ok=True)
+            saved_file_path = papers_dir / uploaded_pdf.name
+            with open(saved_file_path, "wb") as f:
+                f.write(uploaded_pdf.getbuffer())
+            saved_pdf_rel_path = f"data/papers/{uploaded_pdf.name}"
+
+            if AI_AVAILABLE:
+                extracted_text = extract_text_from_pdf(saved_file_path)
+                if extracted_text:
+                    st.success(f"Extracted {len(extracted_text)} characters of text from PDF!")
+        except Exception as e:
+            st.warning(f"Could not save or parse PDF: {e}")
+
     with st.form("add_paper_form"):
         title = st.text_input("Paper Title *", placeholder="e.g., Attention Is All You Need")
-        abstract = st.text_area("Abstract", placeholder="Brief summary of the paper...")
+        default_abstract = extracted_text[:1200].strip() if extracted_text else ""
+        abstract = st.text_area("Abstract", value=default_abstract, placeholder="Brief summary of the paper...")
         ac1, ac2 = st.columns(2)
         with ac1:
             year = st.number_input("Publication Year", min_value=1900, max_value=2100, value=2025)
         with ac2:
             domain = st.text_input("Domain", placeholder="e.g., Machine Learning, NLP, Signal Processing")
         authors_str = st.text_input("Authors (comma-separated)", placeholder="e.g., John Doe, Jane Smith")
-        pdf_path = st.text_input("PDF Path (optional)", placeholder="data/papers/my_paper.pdf")
+        pdf_path = st.text_input("PDF Path (optional)", value=saved_pdf_rel_path or "", placeholder="data/papers/my_paper.pdf")
 
         submitted = st.form_submit_button("➕ Add Paper", type="primary")
 
@@ -275,7 +310,7 @@ elif page == "➕ Add Paper":
                 if AI_AVAILABLE and (paper_data["abstract"] or paper_data["title"]):
                     try:
                         ai_index_paper(paper_id, paper_data["title"], paper_data.get("abstract") or "")
-                        st.info("🧠 Paper also indexed for semantic search.")
+                        st.info("🧠 Paper also indexed in ChromaDB for semantic search.")
                     except Exception as e:
                         st.warning(f"Paper saved in database but AI indexing failed: {e}")
             except Exception as e:
@@ -378,6 +413,21 @@ elif page == "📄 Paper Details":
                     except Exception as e:
                         st.warning(f"Could not find similar papers: {e}")
 
+        # Danger zone / Paper deletion
+        st.markdown("---")
+        with st.expander("⚙️ Manage / Delete Paper"):
+            st.warning("⚠️ Deleting this paper will also cascade-delete its authors mapping, citations, bookmarks, and AI vector embedding.")
+            if st.button("🗑️ Delete Paper", type="secondary"):
+                if delete_paper(paper_id):
+                    if AI_AVAILABLE:
+                        try:
+                            ai_delete_paper_embedding(paper_id)
+                        except Exception:
+                            pass
+                    st.success(f"Paper {paper_id} deleted successfully.")
+                else:
+                    st.error("Failed to delete paper.")
+
 
 # ============================================================================
 # PAGE: MY BOOKMARKS
@@ -468,3 +518,4 @@ elif page == "🔗 Citations Explorer":
                 st.caption("None yet.")
     else:
         st.warning(f"Paper {explore_id} not found.")
+

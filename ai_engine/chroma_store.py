@@ -10,17 +10,16 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 import chromadb
-from chromadb.config import Settings
 
 # ----------------------------------------------------------------------
 # Singleton client – created once per interpreter session.
 # ----------------------------------------------------------------------
-_client: Optional[chromadb.Client] = None
+_client: Optional[chromadb.PersistentClient] = None
 _collection_name = "papers"
 
 
-def _get_client() -> chromadb.Client:
-    """Return a persistent Chroma client.
+def _get_client() -> chromadb.PersistentClient:
+    """Return a persistent Chroma client (ChromaDB v1.x API).
 
     The data directory lives at ``<repo_root>/data/chroma`` so that the vector
     store survives process restarts and is colocated with other project data.
@@ -30,13 +29,7 @@ def _get_client() -> chromadb.Client:
         repo_root = Path(__file__).resolve().parents[1]
         persist_dir = repo_root / "data" / "chroma"
         os.makedirs(persist_dir, exist_ok=True)
-        _client = chromadb.Client(
-            Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory=str(persist_dir),
-                anonymized_telemetry=False,
-            )
-        )
+        _client = chromadb.PersistentClient(path=str(persist_dir))
     return _client
 
 
@@ -80,6 +73,18 @@ def add(paper_id: int, embedding: List[float], metadata: Optional[Dict[str, Any]
     )
 
 
+def add_batch(paper_ids: List[int], embeddings: List[List[float]], metadatas: Optional[List[Dict[str, Any]]] = None) -> None:
+    """Insert or update multiple paper embeddings in a single batch operation."""
+    if not paper_ids:
+        return
+    coll = _get_collection()
+    coll.upsert(
+        ids=[str(pid) for pid in paper_ids],
+        embeddings=embeddings,
+        metadatas=metadatas or [{} for _ in paper_ids],
+    )
+
+
 def search(query_embedding: List[float], top_k: int = 5) -> List[Dict[str, Any]]:
     """Return the ``top_k`` most similar papers.
 
@@ -92,7 +97,7 @@ def search(query_embedding: List[float], top_k: int = 5) -> List[Dict[str, Any]]
     results = coll.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
-        include=["distances", "ids"],
+        include=["distances"],  # ids are always returned by default in ChromaDB v1.x
     )
     ids = results["ids"][0]
     distances = results["distances"][0]
@@ -108,15 +113,14 @@ def get_embedding(paper_id: int) -> List[float]:
     coll = _get_collection()
     # ``get`` can return embeddings when requested.
     result = coll.get(ids=[str(paper_id)], include=["embeddings"])
-    embeddings = result.get("embeddings", [])
-    if not embeddings:
+    embeddings = result.get("embeddings")
+    if embeddings is None or len(embeddings) == 0:
         raise KeyError(f"Embedding for paper_id {paper_id} not found")
-    return embeddings[0]
+    emb = embeddings[0]
+    return emb.tolist() if hasattr(emb, "tolist") else list(emb)
+
 
 def delete(paper_id: int) -> None:
-    """Remove a paper's embedding from the collection."""
-    coll = _get_collection()
-    coll.delete(ids=[str(paper_id)])
     """Remove a paper's embedding from the collection."""
     coll = _get_collection()
     coll.delete(ids=[str(paper_id)])

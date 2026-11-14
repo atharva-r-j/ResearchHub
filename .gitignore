@@ -9,6 +9,7 @@ venv/
 
 # Vector database
 chroma_db/
+data/chroma/
 
 # Uploaded/generated files
 data/papers/*

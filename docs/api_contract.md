@@ -152,3 +152,4 @@ ChromaDB:    document id = "5"  (store as string, convert with int())
 When storing embeddings in ChromaDB, use `str(paper_id)` as the document ID.
 When retrieving results from ChromaDB, convert back with `int(doc_id)` before
 calling `get_papers_by_ids()`.
+

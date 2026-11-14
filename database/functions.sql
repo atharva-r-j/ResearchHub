@@ -123,3 +123,4 @@ BEGIN
         (SELECT COUNT(*) FROM reading_status rs WHERE rs.user_id = p_user_id AND rs.status = 'completed');
 END;
 $$ LANGUAGE plpgsql;
+

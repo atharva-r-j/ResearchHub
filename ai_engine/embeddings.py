@@ -83,3 +83,25 @@ def embed_text(title: str | None, abstract: str | None) -> List[float]:
     # Convert to plain Python list for JSON‑serialisable storage.
     return embedding.tolist()
 
+
+def embed_batch(texts: List[str]) -> List[List[float]]:
+    """Generate normalized embeddings for a batch of text strings.
+
+    Parameters
+    ----------
+    texts : List[str]
+        List of texts (e.g., concatenated title and abstract).
+
+    Returns
+    -------
+    List[List[float]]
+        List of 384-dimensional vector embeddings.
+    """
+    if not texts:
+        return []
+
+    model = load_model()
+    embeddings = model.encode(texts, normalize_embeddings=True, show_progress_bar=False)
+    return [emb.tolist() for emb in embeddings]
+
+
