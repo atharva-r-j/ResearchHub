@@ -1,28 +1,26 @@
 """
-ResearchHub – Modern Streamlit Frontend
-Connects the PostgreSQL database module (database/db.py) with the
-AI semantic search module (ai_engine/semantic_search.py).
+ResearchHub – Minimalist Frontend
+A clean, distraction-free interface for research paper management,
+relational search (PostgreSQL), and vector semantic search (ChromaDB).
 """
 
 import sys
-import os
 from pathlib import Path
 
-# Ensure project root is importable
+# Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
 import pandas as pd
 
-# --- Database imports ---
+# --- Database Layer ---
 from database.db import (
     add_paper,
     get_paper,
     get_all_papers,
     search_papers,
     get_papers_by_ids,
-    update_paper,
     delete_paper,
     add_citation,
     get_cited_papers,
@@ -38,7 +36,7 @@ from database.db import (
     get_user_activity_summary,
 )
 
-# --- AI imports ---
+# --- AI Engine Layer ---
 try:
     from ai_engine.semantic_search import (
         index_paper as ai_index_paper,
@@ -53,680 +51,380 @@ except ImportError:
     AI_AVAILABLE = False
 
 # ============================================================================
-# PAGE CONFIG
+# PAGE CONFIGURATION & MINIMALIST STYLING
 # ============================================================================
 st.set_page_config(
-    page_title="ResearchHub · AI Research Suite",
-    page_icon="📚",
+    page_title="ResearchHub",
+    page_icon="📄",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ============================================================================
-# CUSTOM CSS DESIGN SYSTEM
-# ============================================================================
+# Minimalist CSS: Clean typography, subtle borders, no flashy gradients
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
+/* Font & Base Layout */
 html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* App Background & Spacing */
 .block-container {
     padding-top: 2rem !important;
     padding-bottom: 3rem !important;
-    max-width: 1280px;
+    max-width: 1100px;
 }
 
-/* ============================================================================
-   SIDEBAR POLISHED DESIGN SYSTEM
-============================================================================ */
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #090D16 0%, #0D1424 100%) !important;
-    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+/* Minimal Header */
+.app-header {
+    border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+    padding-bottom: 14px;
+    margin-bottom: 24px;
 }
-
-section[data-testid="stSidebar"] .block-container {
-    padding-top: 1.5rem !important;
-    padding-left: 1.25rem !important;
-    padding-right: 1.25rem !important;
-}
-
-/* Brand Card in Sidebar */
-.brand-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%);
-    border: 1px solid rgba(99, 102, 241, 0.35);
-    border-radius: 14px;
-    margin-bottom: 22px;
-    box-shadow: 0 4px 20px -2px rgba(99, 102, 241, 0.2);
-}
-.brand-icon-wrapper {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
-}
-.brand-title {
-    font-size: 1.2rem;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    background: linear-gradient(135deg, #FFFFFF 0%, #C7D2FE 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+.app-title {
+    font-size: 1.5rem;
+    font-weight: 700;
     margin: 0;
-    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
-.brand-subtitle {
-    font-size: 0.74rem;
-    color: #94A3B8;
-    margin: 2px 0 0 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.app-subtitle {
+    font-size: 0.85rem;
+    color: #888888;
+    margin-top: 4px;
 }
-.brand-badge {
-    background: rgba(99, 102, 241, 0.3);
-    color: #A5B4FC;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 1px 6px;
+
+/* Minimal Metadata Tag */
+.meta-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border: 1px solid rgba(128, 128, 128, 0.25);
     border-radius: 4px;
-    letter-spacing: 0.05em;
+    font-size: 0.75rem;
+    color: inherit;
+    opacity: 0.85;
+    margin-right: 6px;
+    margin-top: 4px;
 }
 
-/* Sidebar Section Headers */
-.sidebar-section-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #64748B;
-    margin: 16px 0 8px 4px;
+/* Clean Paper Item */
+.paper-row {
+    border-bottom: 1px solid rgba(128, 128, 128, 0.15);
+    padding: 14px 0;
+}
+.paper-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+.paper-meta {
+    font-size: 0.82rem;
+    opacity: 0.75;
+    margin-bottom: 6px;
 }
 
-/* Modern Tab Navigation (Transforming Radio Buttons) */
-div[data-testid="stSidebar"] div[role="radiogroup"] {
-    gap: 0 !important;
-}
-div[data-testid="stSidebar"] div[role="radiogroup"] label > div:first-child {
-    display: none !important;
-}
-div[data-testid="stSidebar"] div[role="radiogroup"] label {
-    display: flex !important;
-    align-items: center !important;
-    width: 100% !important;
-    padding: 10px 14px !important;
-    margin-bottom: 4px !important;
-    border-radius: 10px !important;
+/* Minimal Metric */
+div[data-testid="stMetric"] {
     background: transparent !important;
-    border: 1px solid transparent !important;
-    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    cursor: pointer !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
+    border-radius: 6px !important;
+    padding: 12px 16px !important;
+    box-shadow: none !important;
 }
-div[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border-color: rgba(255, 255, 255, 0.07) !important;
-    transform: translateX(4px) !important;
+div[data-testid="stMetricLabel"] {
+    font-size: 0.75rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    opacity: 0.7 !important;
 }
-div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"],
-div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-    background: linear-gradient(90deg, rgba(99, 102, 241, 0.22) 0%, rgba(99, 102, 241, 0.05) 100%) !important;
-    border: 1px solid rgba(99, 102, 241, 0.4) !important;
-    border-left: 3.5px solid #6366F1 !important;
-}
-div[data-testid="stSidebar"] div[role="radiogroup"] label p {
-    font-size: 0.9rem !important;
-    font-weight: 500 !important;
-    color: #94A3B8 !important;
-    margin: 0 !important;
-    letter-spacing: -0.01em;
-}
-div[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] p,
-div[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) p {
-    color: #F8FAFC !important;
+div[data-testid="stMetricValue"] {
+    font-size: 1.5rem !important;
     font-weight: 700 !important;
 }
 
-/* AI Engine Sidebar Card */
-.ai-engine-card {
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 12px;
+/* Sidebar Clean Styling */
+section[data-testid="stSidebar"] {
+    border-right: 1px solid rgba(128, 128, 128, 0.15) !important;
 }
-.ai-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
-}
-.ai-card-title {
-    font-size: 0.82rem;
+.sidebar-brand {
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #F1F5F9;
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
 }
-.ai-status-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    color: #34D399;
-    background: rgba(16, 185, 129, 0.15);
-    border: 1px solid rgba(16, 185, 129, 0.3);
-    padding: 2px 7px;
-    border-radius: 12px;
-}
-.ai-card-meta {
-    font-size: 0.73rem;
-    color: #94A3B8;
-    line-height: 1.5;
-}
-.pulse-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #10B981;
-    box-shadow: 0 0 6px #10B981;
-}
-
-/* User Profile Badge */
-.user-card {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 12px;
-    background: rgba(15, 23, 42, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    margin-top: 8px;
-}
-.user-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 0.85rem;
-    color: white;
-    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
-}
-
-/* Sidebar Footer */
-.sidebar-footer {
-    text-align: center;
-    margin-top: 24px;
-    padding-top: 14px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    font-size: 0.72rem;
-    color: #64748B;
-    line-height: 1.6;
-}
-
-/* Metric / KPI Cards */
-div[data-testid="stMetric"] {
-    background: linear-gradient(180deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.7) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 14px;
-    padding: 16px 18px;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
-    transition: all 0.2s ease;
-}
-div[data-testid="stMetric"]:hover {
-    transform: translateY(-3px);
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: 0 8px 24px -2px rgba(99, 102, 241, 0.2);
-}
-div[data-testid="stMetricLabel"] {
-    font-size: 0.82rem !important;
-    font-weight: 600 !important;
-    color: #94A3B8 !important;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-}
-div[data-testid="stMetricValue"] {
-    font-size: 1.85rem !important;
-    font-weight: 800 !important;
-    color: #F8FAFC !important;
-    letter-spacing: -0.02em;
-}
-
-/* Custom Paper Card Container */
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: linear-gradient(180deg, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.6) 100%);
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 14px !important;
-    padding: 18px 20px !important;
-    margin-bottom: 14px !important;
-    transition: all 0.2s ease;
-}
-div[data-testid="stVerticalBlockBorderWrapper"]:hover {
-    border-color: rgba(99, 102, 241, 0.35) !important;
-    box-shadow: 0 6px 22px -3px rgba(0, 0, 0, 0.3);
-}
-
-/* Pill Badges */
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 16px;
+.sidebar-sub {
     font-size: 0.75rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    margin-right: 6px;
+    opacity: 0.6;
+    margin-bottom: 16px;
 }
-.badge-domain {
-    background: rgba(99, 102, 241, 0.15);
-    color: #A5B4FC;
-    border: 1px solid rgba(99, 102, 241, 0.3);
-}
-.badge-year {
-    background: rgba(148, 163, 184, 0.12);
-    color: #CBD5E1;
-    border: 1px solid rgba(148, 163, 184, 0.25);
-}
-.badge-cite {
-    background: rgba(245, 158, 11, 0.15);
-    color: #FCD34D;
-    border: 1px solid rgba(245, 158, 11, 0.35);
-}
-.badge-relevance {
-    background: rgba(16, 185, 129, 0.15);
-    color: #6EE7B7;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-/* Section Header Typography */
-.hero-header {
-    margin-bottom: 22px;
-}
-.hero-title {
-    font-size: 1.85rem;
-    font-weight: 800;
-    letter-spacing: -0.025em;
-    color: #F8FAFC;
-    margin-bottom: 4px;
-}
-.hero-subtitle {
-    font-size: 0.95rem;
-    color: #94A3B8;
-    margin: 0;
-}
-
-/* Button Refinements */
-button[kind="primary"] {
-    background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    transition: all 0.2s ease !important;
-}
-button[kind="primary"]:hover {
-    opacity: 0.92;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4) !important;
-}
-button[kind="secondary"] {
-    border-radius: 10px !important;
-    font-weight: 500 !important;
-}
-
-/* Expander styling */
-div[data-testid="stExpander"] {
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 10px !important;
-    background: rgba(15, 23, 42, 0.4) !important;
+.sidebar-section {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.5;
+    margin: 18px 0 6px 0;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================================
-# SIDEBAR – BRANDING & NAVIGATION
+# SIDEBAR NAVIGATION & USER CONTEXT
 # ============================================================================
 with st.sidebar:
     st.markdown("""
-    <div class="brand-container">
-        <div class="brand-icon-wrapper">📚</div>
-        <div>
-            <div class="brand-title">ResearchHub</div>
-            <div class="brand-subtitle"><span class="brand-badge">PRO</span> AI Discovery Suite</div>
-        </div>
-    </div>
-    <div class="sidebar-section-label">MAIN NAVIGATION</div>
+    <div class="sidebar-brand">ResearchHub</div>
+    <div class="sidebar-sub">DBMS & Vector Search</div>
     """, unsafe_allow_html=True)
 
     page = st.radio(
         "Navigation",
         [
-            "🏠 Dashboard",
-            "🔍 Search Papers",
-            "➕ Add Paper",
-            "📄 Paper Details",
-            "📑 My Bookmarks",
-            "📖 Reading List",
-            "🔗 Citations Explorer",
+            "Dashboard",
+            "Search",
+            "Add Paper",
+            "Paper Details",
+            "Bookmarks",
+            "Reading List",
+            "Citations",
         ],
         label_visibility="collapsed",
     )
 
-    st.markdown("<div class='sidebar-section-label'>AI & VECTOR ENGINE</div>", unsafe_allow_html=True)
-
-    # AI Status & Sync
-    if AI_AVAILABLE:
-        st.markdown("""
-        <div class="ai-engine-card">
-            <div class="ai-card-header">
-                <div class="ai-card-title">ChromaDB Store</div>
-                <span class="ai-status-tag"><span class="pulse-dot"></span> CONNECTED</span>
-            </div>
-            <div class="ai-card-meta">
-                <div>• Embedding: <b>all-MiniLM-L6</b> (384-d)</div>
-                <div>• Distance: <b>Cosine Metric</b></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        if st.button("🔄 Sync All to ChromaDB", use_container_width=True):
-            with st.status("Vectorizing all papers into ChromaDB...", expanded=True) as status:
-                all_papers = get_all_papers()
-                count = ai_index_papers_batch(all_papers)
-                status.update(label=f"Successfully indexed {count} papers!", state="complete", expanded=False)
-            st.toast(f"✅ Vector database synchronized with {count} papers!", icon="🧠")
-    else:
-        st.warning("⚠️ AI module inactive. Install `sentence-transformers` and `chromadb` for semantic search.")
-
-    st.markdown("<div class='sidebar-section-label'>ACTIVE RESEARCHER</div>", unsafe_allow_html=True)
-
-    users_map = {
-        1: ("Atharva Jadhav", "Lead Researcher", "AJ"),
-        2: ("Riya Sharma", "Graduate Scholar", "RS"),
-        3: ("Dr. Rajesh Mehta", "Principal Investigator", "RM"),
+    st.markdown('<div class="sidebar-section">Active User</div>', unsafe_allow_html=True)
+    users = {
+        1: "Atharva Jadhav",
+        2: "Riya Sharma",
+        3: "Dr. Rajesh Mehta",
     }
-
     current_user_id = st.selectbox(
-        "Select User",
+        "User",
         options=[1, 2, 3],
-        format_func=lambda uid: users_map.get(uid, (f"User {uid}", "", "U"))[0],
+        format_func=lambda uid: users.get(uid, f"User {uid}"),
         label_visibility="collapsed",
     )
 
-    uname, urole, uinitials = users_map.get(current_user_id, (f"User {current_user_id}", "Member", "U"))
-    st.markdown(f"""
-    <div class="user-card">
-        <div class="user-avatar">{uinitials}</div>
-        <div>
-            <div style="font-weight: 700; font-size: 0.88rem; color: #F1F5F9;">{uname}</div>
-            <div style="font-size: 0.74rem; color: #94A3B8;">{urole}</div>
-        </div>
-    </div>
-
-    <div class="sidebar-footer">
-        <div>ResearchHub v1.0 · DBMS Lab</div>
-        <div style="font-size: 0.68rem; color: #475569;">PostgreSQL · ChromaDB · Streamlit</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section">AI Engine</div>', unsafe_allow_html=True)
+    if AI_AVAILABLE:
+        st.caption("ChromaDB · all-MiniLM-L6-v2")
+        if st.button("Sync Vector Store", use_container_width=True):
+            all_papers = get_all_papers()
+            count = ai_index_papers_batch(all_papers)
+            st.success(f"Indexed {count} papers")
+    else:
+        st.caption("AI module not loaded")
 
 
 # ============================================================================
-# HELPER: Render Styled Paper Card
+# HELPER: Minimal Paper Card
 # ============================================================================
-def paper_card(paper, show_actions=True):
-    """Render a paper as an elegant card with badges, authors, and quick actions."""
-    with st.container(border=True):
-        col_main, col_btn = st.columns([5, 1])
+def render_paper(paper, show_view_button=True):
+    """Render a clean, minimal paper row."""
+    with st.container():
+        col_content, col_action = st.columns([5, 1])
 
-        with col_main:
-            # Paper Title
-            st.markdown(f"### {paper['title']}")
+        with col_content:
+            st.markdown(f"**{paper['title']}**")
 
-            # Authors List
+            # Authors line
             authors = paper.get("authors", [])
-            if authors:
-                authors_str = ", ".join(authors) if isinstance(authors, list) else authors
-                st.markdown(f"<span style='color: #94A3B8; font-size: 0.88rem;'>👥 {authors_str}</span>", unsafe_allow_html=True)
+            authors_str = ", ".join(authors) if isinstance(authors, list) else str(authors or "")
+            if authors_str:
+                st.caption(authors_str)
 
-            # Metadata Badges
-            badges_html = '<div style="margin-top: 8px; margin-bottom: 6px;">'
+            # Metadata tags
+            tags = []
             if paper.get("domain"):
-                badges_html += f'<span class="badge badge-domain">🏷️ {paper["domain"]}</span>'
+                tags.append(f"<span class='meta-tag'>{paper['domain']}</span>")
             if paper.get("publication_year"):
-                badges_html += f'<span class="badge badge-year">📅 {paper["publication_year"]}</span>'
+                tags.append(f"<span class='meta-tag'>{paper['publication_year']}</span>")
             if paper.get("citation_count") is not None:
-                badges_html += f'<span class="badge badge-cite">⭐ {paper["citation_count"]} citations</span>'
+                tags.append(f"<span class='meta-tag'>{paper['citation_count']} citations</span>")
             if paper.get("score") is not None:
-                badges_html += f'<span class="badge badge-relevance">🎯 {paper["score"]:.1%} Match</span>'
-            badges_html += '</div>'
-            st.markdown(badges_html, unsafe_allow_html=True)
+                tags.append(f"<span class='meta-tag'>{paper['score']:.1%} match</span>")
 
-        with col_btn:
-            if show_actions:
+            if tags:
+                st.markdown("".join(tags), unsafe_allow_html=True)
+
+        with col_action:
+            if show_view_button:
                 pid = paper["paper_id"]
-                if st.button("Details →", key=f"btn_view_{pid}", use_container_width=True):
+                if st.button("View", key=f"v_{pid}", use_container_width=True):
                     st.session_state["view_paper_id"] = pid
                     st.rerun()
 
-        # Collapsible Abstract
         if paper.get("abstract"):
-            with st.expander("📄 View Abstract"):
-                st.markdown(f"<div style='color: #CBD5E1; font-size: 0.92rem; line-height: 1.6;'>{paper['abstract']}</div>", unsafe_allow_html=True)
+            with st.expander("Abstract"):
+                st.write(paper["abstract"])
 
-        # Relevance Score Bar
-        if paper.get("score") is not None:
-            st.progress(min(float(paper["score"]), 1.0), text=f"Semantic Relevance: {paper['score']:.1%}")
+        st.markdown("<hr style='margin: 10px 0; opacity: 0.15;'/>", unsafe_allow_html=True)
 
 
 # ============================================================================
-# PAGE: DASHBOARD
+# PAGE 1: DASHBOARD
 # ============================================================================
-if page == "🏠 Dashboard":
+if page == "Dashboard":
     st.markdown("""
-    <div class="hero-header">
-        <h1 class="hero-title">Repository Intelligence Dashboard</h1>
-        <p class="hero-subtitle">Real-time metrics, citation leaders, and distribution analytics.</p>
+    <div class="app-header">
+        <h1 class="app-title">Dashboard</h1>
+        <div class="app-subtitle">Overview of repository statistics and personal progress.</div>
     </div>
     """, unsafe_allow_html=True)
 
     try:
         stats = get_dashboard_stats()
     except Exception as e:
-        st.error(f"Could not load dashboard stats. Ensure functions.sql is executed. Error: {e}")
+        st.error(f"Database error: {e}")
         st.stop()
 
-    # Top-level KPI Metrics
-    k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("Total Papers", stats.get("total_papers", 0), help="Registered publications in database")
-    k2.metric("Authors", stats.get("total_authors", 0), help="Unique contributors across papers")
-    k3.metric("Users", stats.get("total_users", 0), help="Active platform researchers")
-    k4.metric("Citations", stats.get("total_citations", 0), help="Total recorded citation links")
-    k5.metric("Avg Citations", f"{stats.get('avg_citations_per_paper', 0):.1f}", help="Average citations per paper")
+    # Metrics Row
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Papers", stats.get("total_papers", 0))
+    m2.metric("Authors", stats.get("total_authors", 0))
+    m3.metric("Users", stats.get("total_users", 0))
+    m4.metric("Citations", stats.get("total_citations", 0))
+    m5.metric("Avg Citations", f"{stats.get('avg_citations_per_paper', 0):.1f}")
 
-    st.markdown("<div style='margin: 24px 0;'></div>", unsafe_allow_html=True)
+    st.write("")
+    col_top, col_chart = st.columns([1, 1])
 
-    col_left, col_right = st.columns([1, 1])
-
-    with col_left:
-        st.markdown("#### 🏆 Most Cited Papers")
+    with col_top:
+        st.subheader("Top Cited Papers")
         top_papers = get_top_cited_papers(5)
         for i, tp in enumerate(top_papers, 1):
-            with st.container(border=True):
-                col_rank, col_info = st.columns([1, 10])
-                with col_rank:
-                    st.markdown(f"<div style='font-size: 1.25rem; font-weight: 800; color: #818CF8;'>#{i}</div>", unsafe_allow_html=True)
-                with col_info:
-                    st.markdown(f"**{tp['title']}**")
-                    st.markdown(f"<span style='color: #94A3B8; font-size: 0.8rem;'>👥 {tp['authors']}</span> · <span class='badge badge-cite'>⭐ {tp['citation_count']} citations</span>", unsafe_allow_html=True)
+            st.markdown(f"**{i}. {tp['title']}**")
+            st.caption(f"{tp['authors']} · {tp['citation_count']} citations")
+            st.write("")
 
-    with col_right:
-        st.markdown("#### 📊 Domain Distribution")
+    with col_chart:
+        st.subheader("Papers by Domain")
         domains = get_domain_stats()
         if domains:
             df = pd.DataFrame(domains)
-            st.bar_chart(df.set_index("domain")["paper_count"], color="#6366F1")
+            st.bar_chart(df.set_index("domain")["paper_count"])
 
-    st.markdown("<div style='margin: 24px 0;'></div>", unsafe_allow_html=True)
-    st.markdown(f"#### 👤 Personal Progress ({uname})")
-    activity = get_user_activity_summary(current_user_id)
-    ac1, ac2, ac3, ac4 = st.columns(4)
-    ac1.metric("🔖 Bookmarks", activity.get("bookmark_count", 0))
-    ac2.metric("📋 Want to Read", activity.get("want_to_read", 0))
-    ac3.metric("📖 Reading", activity.get("reading", 0))
-    ac4.metric("✅ Completed", activity.get("completed", 0))
+    st.write("")
+    st.subheader(f"Activity for {users[current_user_id]}")
+    act = get_user_activity_summary(current_user_id)
+    a1, a2, a3, a4 = st.columns(4)
+    a1.metric("Bookmarks", act.get("bookmark_count", 0))
+    a2.metric("Want to Read", act.get("want_to_read", 0))
+    a3.metric("Reading", act.get("reading", 0))
+    a4.metric("Completed", act.get("completed", 0))
 
 
 # ============================================================================
-# PAGE: SEARCH PAPERS
+# PAGE 2: SEARCH
 # ============================================================================
-elif page == "🔍 Search Papers":
+elif page == "Search":
     st.markdown("""
-    <div class="hero-header">
-        <h1 class="hero-title">Search & Discovery Engine</h1>
-        <p class="hero-subtitle">Find literature using relational SQL filtering or AI semantic vector similarity.</p>
+    <div class="app-header">
+        <h1 class="app-title">Search</h1>
+        <div class="app-subtitle">Explore papers using natural language semantic search or SQL filters.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    search_mode = st.radio(
-        "Search Mode",
-        ["🔍 Keyword & Relational Filters", "🧠 Semantic Search (AI Powered)"],
-        horizontal=True,
-    )
+    mode = st.radio("Search Mode", ["Semantic Search (AI)", "Keyword & Filters (SQL)"], horizontal=True)
 
-    if search_mode == "🔍 Keyword & Relational Filters":
-        st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-        with st.container(border=True):
-            fc1, fc2 = st.columns(2)
-            with fc1:
-                title_q = st.text_input("Title Contains", placeholder="e.g. Residual, Attention, Radar")
-                author_q = st.text_input("Author Name Contains", placeholder="e.g. Hinton, Vaswani, He")
-            with fc2:
-                year_q = st.text_input("Publication Year (exact)", placeholder="e.g. 2023")
-                domain_q = st.text_input("Domain Contains", placeholder="e.g. Computer Vision, NLP")
-            keyword_q = st.text_input("Broad Keyword (searches Title + Abstract)", placeholder="e.g. adversarial, denoising, transformer")
+    if mode == "Semantic Search (AI)":
+        if not AI_AVAILABLE:
+            st.warning("AI engine not available. Install sentence-transformers and chromadb.")
+        else:
+            query = st.text_input("Semantic Query", placeholder="e.g. radar signal denoising or transformer architectures")
+            top_k = st.slider("Results limit", 1, 20, 5)
 
-            btn_search = st.button("🔍 Search Publications", type="primary", use_container_width=True)
+            if st.button("Search", type="primary") and query.strip():
+                with st.spinner("Searching vector space..."):
+                    try:
+                        results = ai_semantic_search(query.strip(), top_k=top_k)
+                        if results:
+                            ids = [r["paper_id"] for r in results]
+                            scores = {r["paper_id"]: r["score"] for r in results}
+                            papers = get_papers_by_ids(ids)
+                            st.write(f"Found {len(papers)} papers:")
+                            for p in papers:
+                                p["score"] = scores.get(p["paper_id"])
+                                render_paper(p)
+                        else:
+                            st.info("No matching papers found. Try syncing vector store in the sidebar.")
+                    except Exception as e:
+                        st.error(f"Search failed: {e}")
 
-        if btn_search:
+    else:
+        c1, c2 = st.columns(2)
+        with c1:
+            title_filter = st.text_input("Title")
+            author_filter = st.text_input("Author")
+        with c2:
+            year_filter = st.text_input("Year")
+            domain_filter = st.text_input("Domain")
+        keyword_filter = st.text_input("Keyword in title/abstract")
+
+        if st.button("Filter Papers", type="primary"):
             filters = {}
-            if title_q.strip():
-                filters["title"] = title_q.strip()
-            if author_q.strip():
-                filters["author"] = author_q.strip()
-            if year_q.strip():
+            if title_filter.strip():
+                filters["title"] = title_filter.strip()
+            if author_filter.strip():
+                filters["author"] = author_filter.strip()
+            if year_filter.strip():
                 try:
-                    filters["publication_year"] = int(year_q.strip())
+                    filters["publication_year"] = int(year_filter.strip())
                 except ValueError:
-                    st.warning("Publication year must be an integer.")
-            if domain_q.strip():
-                filters["domain"] = domain_q.strip()
-            if keyword_q.strip():
-                filters["keyword"] = keyword_q.strip()
+                    pass
+            if domain_filter.strip():
+                filters["domain"] = domain_filter.strip()
+            if keyword_filter.strip():
+                filters["keyword"] = keyword_filter.strip()
 
             results = search_papers(filters)
-            st.markdown(f"#### Results ({len(results)} matches)")
+            st.write(f"Found {len(results)} papers:")
             for p in results:
-                paper_card(p)
-        else:
-            st.caption("Apply filters and click Search, or click Search with empty fields to view all cataloged papers.")
-
-    else:  # Semantic Search
-        if not AI_AVAILABLE:
-            st.warning("⚠️ AI module is not loaded. Install requirements to enable semantic search.")
-        else:
-            st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-            with st.container(border=True):
-                query = st.text_input(
-                    "Describe your research topic or query in plain natural language:",
-                    placeholder="e.g. radar signal denoising using convolutional autoencoders or residual neural networks",
-                )
-                top_k = st.slider("Top results to retrieve", min_value=1, max_value=20, value=5)
-                btn_sem = st.button("🧠 Run Semantic Search", type="primary", use_container_width=True)
-
-            if btn_sem and query:
-                with st.spinner("Embedding query & searching vector space..."):
-                    try:
-                        ai_results = ai_semantic_search(query, top_k=top_k)
-                        if ai_results:
-                            paper_ids = [r["paper_id"] for r in ai_results]
-                            scores = {r["paper_id"]: r["score"] for r in ai_results}
-                            papers = get_papers_by_ids(paper_ids)
-                            st.markdown(f"#### Top {len(papers)} Semantically Relevant Papers")
-                            for p in papers:
-                                p["score"] = scores.get(p["paper_id"], 0)
-                                paper_card(p)
-                        else:
-                            st.info("No matching papers found. Try clicking 'Sync All to ChromaDB' in the sidebar first.")
-                    except Exception as e:
-                        st.error(f"Semantic search error: {e}")
+                render_paper(p)
 
 
 # ============================================================================
-# PAGE: ADD PAPER
+# PAGE 3: ADD PAPER
 # ============================================================================
-elif page == "➕ Add Paper":
+elif page == "Add Paper":
     st.markdown("""
-    <div class="hero-header">
-        <h1 class="hero-title">Ingest Research Paper</h1>
-        <p class="hero-subtitle">Upload a PDF document with auto-text extraction, or enter paper metadata manually.</p>
+    <div class="app-header">
+        <h1 class="app-title">Add Paper</h1>
+        <div class="app-subtitle">Upload a PDF or enter paper metadata manually.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    with st.container(border=True):
-        uploaded_pdf = st.file_uploader("📄 Upload Research Paper PDF (optional)", type=["pdf"])
-        extracted_text = ""
-        saved_pdf_rel_path = None
+    pdf_file = st.file_uploader("Upload PDF (optional)", type=["pdf"])
+    extracted_abstract = ""
+    saved_path = None
 
-        if uploaded_pdf is not None:
-            st.success(f"Uploaded: **{uploaded_pdf.name}** ({uploaded_pdf.size / 1024:.1f} KB)")
-            try:
-                papers_dir = PROJECT_ROOT / "data" / "papers"
-                papers_dir.mkdir(parents=True, exist_ok=True)
-                saved_file_path = papers_dir / uploaded_pdf.name
-                with open(saved_file_path, "wb") as f:
-                    f.write(uploaded_pdf.getbuffer())
-                saved_pdf_rel_path = f"data/papers/{uploaded_pdf.name}"
+    if pdf_file:
+        papers_dir = PROJECT_ROOT / "data" / "papers"
+        papers_dir.mkdir(parents=True, exist_ok=True)
+        dest = papers_dir / pdf_file.name
+        with open(dest, "wb") as f:
+            f.write(pdf_file.getbuffer())
+        saved_path = f"data/papers/{pdf_file.name}"
 
-                if AI_AVAILABLE:
-                    extracted_text = extract_text_from_pdf(saved_file_path)
-                    if extracted_text:
-                        st.info(f"✨ PyMuPDF extracted {len(extracted_text)} characters from the document.")
-            except Exception as e:
-                st.warning(f"Could not parse PDF: {e}")
+        if AI_AVAILABLE:
+            text = extract_text_from_pdf(dest)
+            if text:
+                extracted_abstract = text[:1000].strip()
+                st.caption(f"Extracted {len(text)} characters from PDF.")
 
-    with st.form("add_paper_form"):
-        title = st.text_input("Paper Title *", placeholder="e.g. Attention Is All You Need")
-        default_abstract = extracted_text[:1200].strip() if extracted_text else ""
-        abstract = st.text_area("Abstract", value=default_abstract, placeholder="Enter or verify paper abstract summary...", height=140)
-        
-        ac1, ac2 = st.columns(2)
-        with ac1:
+    with st.form("new_paper_form"):
+        title = st.text_input("Title *")
+        abstract = st.text_area("Abstract", value=extracted_abstract, height=120)
+        c1, c2 = st.columns(2)
+        with c1:
             year = st.number_input("Publication Year", min_value=1900, max_value=2100, value=2024)
-        with ac2:
-            domain = st.text_input("Domain", placeholder="e.g. Computer Vision, NLP, Signal Processing")
-            
-        authors_str = st.text_input("Authors (comma-separated)", placeholder="e.g. Ashish Vaswani, Noam Shazeer, Niki Parmar")
-        pdf_path = st.text_input("PDF File Path", value=saved_pdf_rel_path or "", placeholder="data/papers/paper.pdf")
+        with c2:
+            domain = st.text_input("Domain")
+        authors = st.text_input("Authors (comma-separated)")
+        pdf_path = st.text_input("PDF Path", value=saved_path or "")
 
-        submitted = st.form_submit_button("➕ Save Paper & Generate Embeddings", type="primary", use_container_width=True)
+        submit = st.form_submit_button("Add Paper", type="primary")
 
-    if submitted:
+    if submit:
         if not title.strip():
-            st.error("Paper Title is required.")
+            st.error("Title is required.")
         else:
             paper_data = {
                 "title": title.strip(),
@@ -734,261 +432,243 @@ elif page == "➕ Add Paper":
                 "publication_year": year,
                 "domain": domain.strip() or None,
                 "pdf_path": pdf_path.strip() or None,
-                "authors": [a.strip() for a in authors_str.split(",") if a.strip()] if authors_str.strip() else [],
+                "authors": [a.strip() for a in authors.split(",") if a.strip()],
             }
             try:
-                paper_id = add_paper(paper_data)
-                st.success(f"🎉 Paper saved to PostgreSQL with ID: **{paper_id}**")
-
-                if AI_AVAILABLE and (paper_data["abstract"] or paper_data["title"]):
+                pid = add_paper(paper_data)
+                st.success(f"Paper added with ID: {pid}")
+                if AI_AVAILABLE and (paper_data["title"] or paper_data["abstract"]):
                     try:
-                        ai_index_paper(paper_id, paper_data["title"], paper_data.get("abstract") or "")
-                        st.toast("🧠 Vector embeddings created & saved to ChromaDB!", icon="✅")
+                        ai_index_paper(pid, paper_data["title"], paper_data["abstract"] or "")
                     except Exception as e:
-                        st.warning(f"Paper recorded in database, but vector embedding failed: {e}")
+                        st.warning(f"Saved to DB, but vector indexing failed: {e}")
             except Exception as e:
                 st.error(f"Error adding paper: {e}")
 
 
 # ============================================================================
-# PAGE: PAPER DETAILS
+# PAGE 4: PAPER DETAILS
 # ============================================================================
-elif page == "📄 Paper Details":
+elif page == "Paper Details":
     st.markdown("""
-    <div class="hero-header">
-        <h1 class="hero-title">Publication Deep Dive</h1>
-        <p class="hero-subtitle">Inspect citation references, bookmark items, and generate AI recommendations.</p>
+    <div class="app-header">
+        <h1 class="app-title">Paper Details</h1>
+        <div class="app-subtitle">Inspect metadata, citations, reading state, and similar papers.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    default_id = st.session_state.get("view_paper_id", 1)
-    paper_id = st.number_input("Enter or Select Paper ID", min_value=1, value=default_id, step=1)
+    default_pid = st.session_state.get("view_paper_id", 1)
+    paper_id = st.number_input("Paper ID", min_value=1, value=default_pid, step=1)
 
     paper = get_paper(paper_id)
     if not paper:
-        st.warning(f"Paper with ID {paper_id} not found in database.")
+        st.warning(f"Paper ID {paper_id} not found.")
     else:
-        # Header banner
-        with st.container(border=True):
-            st.markdown(f"## {paper['title']}")
-            if paper.get("authors"):
-                st.markdown(f"<span style='color: #94A3B8; font-size: 1rem;'>👥 {', '.join(paper['authors'])}</span>", unsafe_allow_html=True)
+        st.subheader(paper["title"])
+        authors = paper.get("authors", [])
+        if authors:
+            st.caption(f"Authors: {', '.join(authors)}")
 
-            st.markdown("<div style='margin-top: 14px;'></div>", unsafe_allow_html=True)
-            mc1, mc2, mc3 = st.columns(3)
-            mc1.metric("Publication Year", paper.get("publication_year") or "N/A")
-            mc2.metric("Research Domain", paper.get("domain") or "General")
-            mc3.metric("Citation Count", paper.get("citation_count", 0))
+        # Info line
+        st.write(f"**Year:** {paper.get('publication_year', 'N/A')} · **Domain:** {paper.get('domain', 'N/A')} · **Citations:** {paper.get('citation_count', 0)}")
 
-            if paper.get("abstract"):
-                st.markdown("### Abstract")
-                st.markdown(f"<div style='color: #E2E8F0; font-size: 0.95rem; line-height: 1.7;'>{paper['abstract']}</div>", unsafe_allow_html=True)
+        if paper.get("abstract"):
+            st.markdown("**Abstract**")
+            st.write(paper["abstract"])
 
-        st.markdown("<div style='margin: 20px 0;'></div>", unsafe_allow_html=True)
+        st.write("")
 
-        # Action section
-        col_act1, col_act2 = st.columns(2)
-        with col_act1:
-            with st.container(border=True):
-                st.markdown("#### 🔖 Bookmarks")
-                bc1, bc2 = st.columns(2)
-                with bc1:
-                    if st.button("Add Bookmark", use_container_width=True):
-                        if add_bookmark(current_user_id, paper_id):
-                            st.success("Bookmarked!")
-                        else:
-                            st.info("Already in bookmarks.")
-                with bc2:
-                    if st.button("Remove Bookmark", use_container_width=True):
-                        if remove_bookmark(current_user_id, paper_id):
-                            st.success("Removed.")
-                        else:
-                            st.info("Not bookmarked.")
+        # Actions Row
+        c_bk, c_rd = st.columns(2)
+        with c_bk:
+            st.markdown("**Bookmarks**")
+            b1, b2 = st.columns(2)
+            with b1:
+                if st.button("Add Bookmark", use_container_width=True):
+                    if add_bookmark(current_user_id, paper_id):
+                        st.success("Bookmarked")
+                    else:
+                        st.info("Already bookmarked")
+            with b2:
+                if st.button("Remove Bookmark", use_container_width=True):
+                    if remove_bookmark(current_user_id, paper_id):
+                        st.success("Removed")
+                    else:
+                        st.info("Not bookmarked")
 
-        with col_act2:
-            with st.container(border=True):
-                st.markdown("#### 📖 Reading Tracker")
-                rc1, rc2 = st.columns([2, 1])
-                with rc1:
-                    new_status = st.selectbox(
-                        "Reading Status",
-                        ["want_to_read", "reading", "completed"],
-                        format_func=lambda s: s.replace("_", " ").title(),
-                        label_visibility="collapsed",
-                    )
-                with rc2:
-                    if st.button("Set Status", use_container_width=True):
-                        set_reading_status(current_user_id, paper_id, new_status)
-                        st.success(f"Updated!")
+        with c_rd:
+            st.markdown("**Reading Status**")
+            s1, s2 = st.columns([2, 1])
+            with s1:
+                status = st.selectbox(
+                    "Status",
+                    ["want_to_read", "reading", "completed"],
+                    format_func=lambda s: s.replace("_", " ").title(),
+                    label_visibility="collapsed",
+                )
+            with s2:
+                if st.button("Set", use_container_width=True):
+                    set_reading_status(current_user_id, paper_id, status)
+                    st.success("Updated")
 
-        st.markdown("<div style='margin: 20px 0;'></div>", unsafe_allow_html=True)
+        st.write("")
+        st.markdown("<hr style='opacity: 0.2;'/>", unsafe_allow_html=True)
 
-        # Citations Graph Explorer
-        ct1, ct2 = st.columns(2)
-        with ct1:
-            with st.container(border=True):
-                st.markdown("#### 📚 References (Papers this cites)")
-                cited = get_cited_papers(paper_id)
-                if cited:
-                    for c in cited:
-                        st.markdown(f"- **[{c['paper_id']}]** {c['title']} *({c.get('publication_year', 'N/A')})*")
-                else:
-                    st.caption("No references recorded in citation graph.")
+        # Citations
+        c_ref, c_cited = st.columns(2)
+        with c_ref:
+            st.markdown("**References (Outbound Citations)**")
+            cited = get_cited_papers(paper_id)
+            if cited:
+                for c in cited:
+                    st.write(f"- [{c['paper_id']}] {c['title']} ({c.get('publication_year', 'N/A')})")
+            else:
+                st.caption("No references recorded.")
 
-        with ct2:
-            with st.container(border=True):
-                st.markdown("#### 📖 Cited By (Papers citing this)")
-                citing = get_citing_papers(paper_id)
-                if citing:
-                    for c in citing:
-                        st.markdown(f"- **[{c['paper_id']}]** {c['title']} *({c.get('publication_year', 'N/A')})*")
-                else:
-                    st.caption("No papers currently cite this publication.")
+        with c_cited:
+            st.markdown("**Cited By (Inbound Citations)**")
+            citing = get_citing_papers(paper_id)
+            if citing:
+                for c in citing:
+                    st.write(f"- [{c['paper_id']}] {c['title']} ({c.get('publication_year', 'N/A')})")
+            else:
+                st.caption("No inbound citations.")
 
-        # AI Recommendation Section
+        # Recommendations
         if AI_AVAILABLE:
-            st.markdown("<div style='margin: 24px 0;'></div>", unsafe_allow_html=True)
-            st.markdown("### 🧠 AI Similar Papers Recommendation")
-            st.caption("Discovers topologically nearest papers in the 384-dimensional latent embedding space.")
-            if st.button("Find Similar Papers", type="primary"):
-                with st.spinner("Finding nearest neighbors in ChromaDB..."):
+            st.write("")
+            st.markdown("<hr style='opacity: 0.2;'/>", unsafe_allow_html=True)
+            st.markdown("**Similar Papers (AI Recommendation)**")
+            if st.button("Find Similar Papers"):
+                with st.spinner("Finding nearest neighbors in vector space..."):
                     try:
-                        similar = ai_get_similar_papers(paper_id, top_k=5)
-                        if similar:
-                            sim_ids = [s["paper_id"] for s in similar]
-                            sim_scores = {s["paper_id"]: s["score"] for s in similar}
+                        sim = ai_get_similar_papers(paper_id, top_k=5)
+                        if sim:
+                            sim_ids = [s["paper_id"] for s in sim]
+                            scores = {s["paper_id"]: s["score"] for s in sim}
                             sim_papers = get_papers_by_ids(sim_ids)
                             for sp in sim_papers:
-                                sp["score"] = sim_scores.get(sp["paper_id"], 0)
-                                paper_card(sp, show_actions=True)
+                                sp["score"] = scores.get(sp["paper_id"])
+                                render_paper(sp, show_view_button=True)
                         else:
-                            st.info("No similar papers found. Verify that the repository is synced.")
+                            st.info("No similar papers found.")
                     except Exception as e:
-                        st.warning(f"Could not compute recommendations: {e}")
+                        st.error(f"Recommendation error: {e}")
 
-        # Danger zone / Deletion
-        st.markdown("<div style='margin: 24px 0;'></div>", unsafe_allow_html=True)
-        with st.expander("⚙️ Manage Publication / Delete Paper"):
-            st.warning("⚠️ Deleting will permanently remove this record from PostgreSQL, along with author links, citations, bookmarks, and ChromaDB vector embeddings.")
-            if st.button("🗑️ Permanently Delete Paper", type="secondary"):
+        # Delete
+        st.write("")
+        with st.expander("Delete Paper"):
+            st.warning("Deleting this paper will remove its citations, bookmarks, and vector embedding.")
+            if st.button("Delete Paper", type="secondary"):
                 if delete_paper(paper_id):
                     if AI_AVAILABLE:
                         try:
                             ai_delete_paper_embedding(paper_id)
                         except Exception:
                             pass
-                    st.success(f"Paper {paper_id} deleted successfully.")
+                    st.success("Paper deleted.")
                 else:
                     st.error("Failed to delete paper.")
 
 
 # ============================================================================
-# PAGE: MY BOOKMARKS
+# PAGE 5: BOOKMARKS
 # ============================================================================
-elif page == "📑 My Bookmarks":
+elif page == "Bookmarks":
     st.markdown(f"""
-    <div class="hero-header">
-        <h1 class="hero-title">Saved Bookmarks</h1>
-        <p class="hero-subtitle">Publications saved for reference by {uname}.</p>
+    <div class="app-header">
+        <h1 class="app-title">Bookmarks</h1>
+        <div class="app-subtitle">Saved publications for {users[current_user_id]}.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    bookmarks = get_user_bookmarks(current_user_id)
-    if bookmarks:
-        st.markdown(f"#### Saved Publications ({len(bookmarks)})")
-        for p in bookmarks:
-            paper_card(p)
+    bks = get_user_bookmarks(current_user_id)
+    if bks:
+        st.write(f"{len(bks)} bookmarked papers:")
+        for p in bks:
+            render_paper(p)
     else:
-        st.info("No bookmarks saved yet. Explore papers and click 'Add Bookmark' on their details page.")
+        st.info("No bookmarks saved.")
 
 
 # ============================================================================
-# PAGE: READING LIST
+# PAGE 6: READING LIST
 # ============================================================================
-elif page == "📖 Reading List":
+elif page == "Reading List":
     st.markdown(f"""
-    <div class="hero-header">
-        <h1 class="hero-title">Personal Reading Pipeline</h1>
-        <p class="hero-subtitle">Track reading progress and milestones for {uname}.</p>
+    <div class="app-header">
+        <h1 class="app-title">Reading List</h1>
+        <div class="app-subtitle">Reading pipeline for {users[current_user_id]}.</div>
     </div>
     """, unsafe_allow_html=True)
 
     status_filter = st.selectbox(
-        "Filter by reading state",
+        "Filter status",
         [None, "want_to_read", "reading", "completed"],
-        format_func=lambda x: "All States" if x is None else x.replace("_", " ").title(),
+        format_func=lambda x: "All Statuses" if x is None else x.replace("_", " ").title(),
     )
 
-    reading = get_user_reading_list(current_user_id, status=status_filter)
-    if reading:
-        st.markdown(f"#### Tracked Papers ({len(reading)})")
-        for p in reading:
-            badge_map = {"want_to_read": "📋 Want to Read", "reading": "📖 Reading", "completed": "✅ Completed"}
-            state_text = badge_map.get(p.get("reading_status"), "Status")
-            st.markdown(f"<span class='badge badge-domain'>{state_text}</span>", unsafe_allow_html=True)
-            paper_card(p, show_actions=True)
+    items = get_user_reading_list(current_user_id, status=status_filter)
+    if items:
+        for p in items:
+            st.caption(f"Status: {p.get('reading_status', '').replace('_', ' ').title()}")
+            render_paper(p)
     else:
-        st.info("No publications currently in this reading category.")
+        st.info("No papers found in this category.")
 
 
 # ============================================================================
-# PAGE: CITATIONS EXPLORER
+# PAGE 7: CITATIONS EXPLORER
 # ============================================================================
-elif page == "🔗 Citations Explorer":
+elif page == "Citations":
     st.markdown("""
-    <div class="hero-header">
-        <h1 class="hero-title">Citation Graph Explorer</h1>
-        <p class="hero-subtitle">Map relationships, link publications, and navigate citation networks.</p>
+    <div class="app-header">
+        <h1 class="app-title">Citations Explorer</h1>
+        <div class="app-subtitle">Create citation links and traverse citation trees.</div>
     </div>
     """, unsafe_allow_html=True)
 
-    with st.container(border=True):
-        st.markdown("#### 🔗 Record a New Citation Link")
-        with st.form("add_citation_form"):
-            cc1, cc2 = st.columns(2)
-            with cc1:
-                citing_id = st.number_input("Citing Paper ID (source)", min_value=1, value=1, step=1)
-            with cc2:
-                cited_id = st.number_input("Cited Paper ID (target reference)", min_value=1, value=2, step=1)
-            cite_submitted = st.form_submit_button("Create Citation Edge", type="primary", use_container_width=True)
+    st.subheader("Add Citation Link")
+    with st.form("add_cite_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            citing = st.number_input("Citing Paper ID", min_value=1, value=1, step=1)
+        with c2:
+            cited = st.number_input("Cited Paper ID", min_value=1, value=2, step=1)
+        sub = st.form_submit_button("Add Citation Edge")
 
-        if cite_submitted:
-            if citing_id == cited_id:
-                st.error("A paper cannot cite itself (self-citation constraint).")
-            else:
-                if add_citation(citing_id, cited_id):
-                    st.success(f"✅ Citation edge established: Paper {citing_id} ➔ Paper {cited_id} (Citation count auto-incremented by trigger)")
-                else:
-                    st.warning("Citation edge already exists or one of the paper IDs is invalid.")
-
-    st.markdown("<div style='margin: 24px 0;'></div>", unsafe_allow_html=True)
-
-    with st.container(border=True):
-        st.markdown("#### 🔍 Inspect Citation Network")
-        explore_id = st.number_input("Target Paper ID", min_value=1, value=1, step=1, key="explore_cite")
-
-        paper = get_paper(explore_id)
-        if paper:
-            st.markdown(f"### {paper['title']}")
-            st.markdown(f"<span class='badge badge-cite'>⭐ {paper.get('citation_count', 0)} Total Inbound Citations</span>", unsafe_allow_html=True)
-
-            ex1, ex2 = st.columns(2)
-            with ex1:
-                st.markdown("##### 📚 References Outbound (This paper cites)")
-                cited = get_cited_papers(explore_id)
-                if cited:
-                    for c in cited:
-                        st.markdown(f"- **[{c['paper_id']}]** {c['title']} *({c.get('publication_year', 'N/A')})*")
-                else:
-                    st.caption("No outbound references recorded.")
-
-            with ex2:
-                st.markdown("##### 📖 Inbound Citations (Cited by others)")
-                citing = get_citing_papers(explore_id)
-                if citing:
-                    for c in citing:
-                        st.markdown(f"- **[{c['paper_id']}]** {c['title']} *({c.get('publication_year', 'N/A')})*")
-                else:
-                    st.caption("No inbound citations recorded yet.")
+    if sub:
+        if citing == cited:
+            st.error("A paper cannot cite itself.")
         else:
-            st.warning(f"Paper ID {explore_id} not found.")
+            if add_citation(citing, cited):
+                st.success(f"Citation created: Paper {citing} → Paper {cited}")
+            else:
+                st.warning("Citation already exists or IDs are invalid.")
+
+    st.write("")
+    st.subheader("Inspect Paper Network")
+    target_id = st.number_input("Paper ID to inspect", min_value=1, value=1, step=1)
+
+    p = get_paper(target_id)
+    if p:
+        st.markdown(f"**{p['title']}** ({p.get('citation_count', 0)} citations)")
+        col_ref, col_cited = st.columns(2)
+        with col_ref:
+            st.write("**References (Outgoing):**")
+            refs = get_cited_papers(target_id)
+            if refs:
+                for r in refs:
+                    st.write(f"- [{r['paper_id']}] {r['title']}")
+            else:
+                st.caption("None.")
+        with col_cited:
+            st.write("**Cited By (Incoming):**")
+            cits = get_citing_papers(target_id)
+            if cits:
+                for c in cits:
+                    st.write(f"- [{c['paper_id']}] {c['title']}")
+            else:
+                st.caption("None.")
+    else:
+        st.warning(f"Paper {target_id} not found.")
