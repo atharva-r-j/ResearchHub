@@ -391,7 +391,7 @@ if page == "Dashboard":
             st.bar_chart(df.set_index("domain")["paper_count"])
 
     st.write("")
-    st.subheader(f"Activity for {users[current_user_id]}")
+    st.subheader(f"Activity for {_current_user['full_name']}")
     act = get_user_activity_summary(current_user_id)
     a1, a2, a3, a4 = st.columns(4)
     a1.metric("Bookmarks", act.get("bookmark_count", 0))
@@ -667,7 +667,7 @@ elif page == "Bookmarks":
     st.markdown(f"""
     <div class="app-header">
         <h1 class="app-title">Bookmarks</h1>
-        <div class="app-subtitle">Saved publications for {users[current_user_id]}.</div>
+        <div class="app-subtitle">Saved publications for {_current_user['full_name']}.</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -687,7 +687,7 @@ elif page == "Reading List":
     st.markdown(f"""
     <div class="app-header">
         <h1 class="app-title">Reading List</h1>
-        <div class="app-subtitle">Reading pipeline for {users[current_user_id]}.</div>
+        <div class="app-subtitle">Reading pipeline for {_current_user['full_name']}.</div>
     </div>
     """, unsafe_allow_html=True)
 
