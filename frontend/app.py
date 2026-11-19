@@ -34,6 +34,8 @@ from database.db import (
     get_domain_stats,
     get_top_cited_papers,
     get_user_activity_summary,
+    authenticate_user,
+    register_user,
 )
 
 # --- AI Engine Layer ---
@@ -167,6 +169,98 @@ section[data-testid="stSidebar"] {
 """, unsafe_allow_html=True)
 
 # ============================================================================
+# LOGIN / REGISTER WALL
+# Shows the login page until the user is authenticated. Once logged in,
+# the user object is stored in st.session_state["user"] and the full app
+# becomes accessible.
+# ============================================================================
+if "user" not in st.session_state:
+    st.session_state["user"] = None
+
+def show_login_page():
+    """Render the centered login / register page."""
+    _, col, _ = st.columns([1, 1.6, 1])
+    with col:
+        st.markdown(
+            """
+            <div style="text-align:center; padding: 2rem 0 1.5rem 0;">
+                <div style="font-size:3rem;">📚</div>
+                <h1 style="font-size:1.9rem; font-weight:800; letter-spacing:-0.03em; margin:0.4rem 0 0.2rem 0;">
+                    ResearchHub
+                </h1>
+                <p style="opacity:0.55; font-size:0.9rem; margin:0;">
+                    AI-Powered Research Paper Management
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        tab_login, tab_register = st.tabs(["Sign In", "Create Account"])
+
+        # ── LOGIN TAB ──────────────────────────────────────────────────────
+        with tab_login:
+            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+            with st.form("login_form", clear_on_submit=False):
+                username_in = st.text_input("Username", placeholder="your_username")
+                password_in = st.text_input("Password", type="password", placeholder="••••••••")
+                submitted = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+
+            if submitted:
+                if not username_in.strip() or not password_in:
+                    st.error("Please fill in both fields.")
+                else:
+                    user = authenticate_user(username_in.strip(), password_in)
+                    if user:
+                        st.session_state["user"] = user
+                        st.success(f"Welcome back, {user['full_name'].split()[0]}!")
+                        st.rerun()
+                    else:
+                        st.error("Incorrect username or password.")
+
+            st.markdown(
+                "<p style='text-align:center; font-size:0.78rem; opacity:0.5; margin-top:0.8rem;'>"
+                "Demo — username: <b>atharva_j</b> &nbsp;|&nbsp; password: <b>password123</b>"
+                "</p>",
+                unsafe_allow_html=True,
+            )
+
+        # ── REGISTER TAB ───────────────────────────────────────────────────
+        with tab_register:
+            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+            with st.form("register_form", clear_on_submit=True):
+                reg_name     = st.text_input("Full Name",        placeholder="Atharva Jadhav")
+                reg_username = st.text_input("Username",         placeholder="atharva_j")
+                reg_email    = st.text_input("Email",            placeholder="atharva@example.com")
+                reg_password = st.text_input("Password",         type="password", placeholder="••••••••")
+                reg_confirm  = st.text_input("Confirm Password", type="password", placeholder="••••••••")
+                reg_submit   = st.form_submit_button("Create Account", use_container_width=True, type="primary")
+
+            if reg_submit:
+                if not all([reg_name, reg_username, reg_email, reg_password, reg_confirm]):
+                    st.error("Please fill in all fields.")
+                elif reg_password != reg_confirm:
+                    st.error("Passwords do not match.")
+                elif len(reg_password) < 6:
+                    st.error("Password must be at least 6 characters.")
+                else:
+                    new_user = register_user(reg_username, reg_email, reg_name, reg_password)
+                    if new_user:
+                        st.session_state["user"] = new_user
+                        st.success(f"Account created! Welcome, {new_user['full_name'].split()[0]}!")
+                        st.rerun()
+                    else:
+                        st.error("Username or email already taken. Try a different one.")
+
+# If not logged in, show login page and stop rendering the rest of the app
+if st.session_state["user"] is None:
+    show_login_page()
+    st.stop()
+
+# Logged-in user shorthand used throughout the app
+_current_user: dict = st.session_state["user"]
+
+# ============================================================================
 # SIDEBAR NAVIGATION & USER CONTEXT
 # ============================================================================
 with st.sidebar:
@@ -189,18 +283,13 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown('<div class="sidebar-section">Active User</div>', unsafe_allow_html=True)
-    users = {
-        1: "Atharva Jadhav",
-        2: "Riya Sharma",
-        3: "Dr. Rajesh Mehta",
-    }
-    current_user_id = st.selectbox(
-        "User",
-        options=[1, 2, 3],
-        format_func=lambda uid: users.get(uid, f"User {uid}"),
-        label_visibility="collapsed",
-    )
+    st.markdown('<div class="sidebar-section">Signed In As</div>', unsafe_allow_html=True)
+    st.caption(f"👤 {_current_user['full_name']}")
+    st.caption(f"@{_current_user['username']}")
+    current_user_id: int = _current_user["user_id"]
+    if st.button("Sign Out", use_container_width=True):
+        st.session_state["user"] = None
+        st.rerun()
 
     st.markdown('<div class="sidebar-section">AI Engine</div>', unsafe_allow_html=True)
     if AI_AVAILABLE:

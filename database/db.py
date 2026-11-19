@@ -5,6 +5,7 @@ citations, bookmarks, and reading status.
 """
 
 import os
+import hashlib
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -564,6 +565,62 @@ def get_user_activity_summary(user_id: int) -> Dict[str, Any]:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM get_user_activity_summary(%s);", (user_id,))
             return dict(cur.fetchone() or {})
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# USER AUTH (Login & Register)
+# ============================================================================
+
+def _hash_password(password: str) -> str:
+    """SHA-256 hash of a plain-text password. Simple, no extra dependencies."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+
+def register_user(username: str, email: str, full_name: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Create a new user account.
+    Returns the new user dict on success, None if username/email already exists.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO users (username, email, full_name, password_hash)
+                VALUES (%s, %s, %s, %s)
+                RETURNING user_id, username, email, full_name, created_at;
+                """,
+                (username.strip(), email.strip(), full_name.strip(), _hash_password(password)),
+            )
+            user = dict(cur.fetchone())
+        conn.commit()
+        return user
+    except Exception:
+        conn.rollback()
+        return None          # username or email already taken
+    finally:
+        conn.close()
+
+
+def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Check username + password. Returns the user dict on success, None on failure.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT user_id, username, email, full_name, created_at
+                FROM users
+                WHERE username = %s AND password_hash = %s;
+                """,
+                (username.strip(), _hash_password(password)),
+            )
+            row = cur.fetchone()
+            return dict(row) if row else None
     finally:
         conn.close()
 
