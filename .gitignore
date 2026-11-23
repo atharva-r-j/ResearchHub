@@ -1,0 +1,14 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Vector store database binaries and persistent data
+data/chroma/
+
+# Environment / IDE
+.vscode/
+.idea/
+*.venv
+venv/
+ENV/
